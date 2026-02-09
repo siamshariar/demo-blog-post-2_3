@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { Post, PostsPage } from '@/lib/types';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, use } from 'react';
 
 export default function InterceptedPostModal({ 
   params 
@@ -13,19 +13,13 @@ export default function InterceptedPostModal({
   const router = useRouter();
   const queryClient = useQueryClient();
   
-  // Unwrap params for client component
-  const [slug, setSlug] = useState<string>('');
-  
-  useEffect(() => {
-    params.then(p => setSlug(p.slug));
-  }, [params]);
+  // Unwrap params INSTANTLY during render (not in useEffect!)
+  const { slug } = use(params);
 
   // 1. GET DATA FROM CACHE (Instant)
   // We search the 'posts' cache for an item that matches this slug
   // This data exists because the user just saw it on the List Page!
   const cachedData = useMemo(() => {
-    if (!slug) return null;
-    
     const postsData = queryClient.getQueryData(['posts']) as { 
       pages: PostsPage[] 
     } | undefined;
@@ -45,7 +39,6 @@ export default function InterceptedPostModal({
       return res.json();
     },
     initialData: cachedData ?? undefined, // <--- CRITICAL: Uses list data until full data arrives
-    enabled: !!slug,
   });
 
   // Handle Modal Close (Browser Back works automatically)
@@ -59,8 +52,6 @@ export default function InterceptedPostModal({
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
-
-  if (!slug) return null;
 
   return (
     <div 
