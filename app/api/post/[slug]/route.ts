@@ -16,7 +16,12 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(post);
+    // Cache on Vercel Edge for 60 seconds
+    return NextResponse.json(post, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+      },
+    });
   } catch (error) {
     console.error('API Error:', error);
     return NextResponse.json(
