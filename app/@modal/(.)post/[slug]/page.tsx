@@ -55,11 +55,11 @@ export default function InterceptedPostModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4"
       onClick={onDismiss}
     >
       <div 
-        className="bg-white max-w-4xl w-full my-8 rounded-xl shadow-2xl relative animate-in slide-in-from-bottom-4 duration-300"
+        className="bg-white max-w-4xl w-full my-8 rounded-xl shadow-2xl relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
