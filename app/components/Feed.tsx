@@ -83,8 +83,8 @@ export default function Feed() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className={`min-h-screen ${selectedSlug ? 'bg-white' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+      <div className={`max-w-7xl mx-auto px-4 py-8 ${selectedSlug ? 'hidden' : ''}`}>
         <header className="mb-8">
           <h1 className="text-4xl font-bold text-black mb-2">Trending Posts</h1>
           <p className="text-black mb-3">Instant-loading with smart caching • Click any post to see the magic ✨</p>

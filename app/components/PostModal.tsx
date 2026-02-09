@@ -40,16 +40,13 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
 
   return (
     <div 
-      className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 z-50 overflow-y-auto"
+      className="fixed inset-0 bg-white z-50 overflow-y-auto"
+      onClick={onClose}
     >
       <div 
-        className="min-h-screen"
-        onClick={onClose}
+        className="max-w-4xl mx-auto py-10 px-4 min-h-screen"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div 
-          className="max-w-4xl mx-auto py-10 px-4"
-          onClick={(e) => e.stopPropagation()}
-        >
         <button
           onClick={onClose}
           className="inline-flex items-center gap-2 text-black hover:text-black mb-6 group"
@@ -145,7 +142,6 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
             </div>
           </article>
         </div>
-      </div>
     </div>
   );
 }
