@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Post, PostsPage } from '@/lib/types';
 import { useMemo, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import PostContainer from '@/app/components/PostContainer';
 
 interface PostModalProps {
@@ -56,11 +57,11 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
       
       // Restore original metadata
       if (originalMetadataRef.current) {
-        document.title = originalMetadataRef.current.title;
-        updateMetaTag('name', 'description', originalMetadataRef.current.description);
-        updateMetaTag('property', 'og:title', originalMetadataRef.current.ogTitle);
-        updateMetaTag('property', 'og:description', originalMetadataRef.current.ogDescription);
-        updateMetaTag('property', 'og:image', originalMetadataRef.current.ogImage);
+        document.title = originalMetadataRef.current!.title;
+        updateMetaTag('name', 'description', originalMetadataRef.current!.description);
+        updateMetaTag('property', 'og:title', originalMetadataRef.current!.ogTitle);
+        updateMetaTag('property', 'og:description', originalMetadataRef.current!.ogDescription);
+        updateMetaTag('property', 'og:image', originalMetadataRef.current!.ogImage);
       }
       // Don't restore scroll here - parent component handles it
     };
@@ -69,7 +70,12 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
   // Scroll modal to top when slug changes (related post clicked)
   useEffect(() => {
     if (modalContainerRef.current) {
-      modalContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      // use 'auto' for an immediate jump; fallback to setting scrollTop for older browsers
+      try {
+        modalContainerRef.current.scrollTo({ top: 0, behavior: 'auto' });
+      } catch (err) {
+        modalContainerRef.current.scrollTop = 0;
+      }
     }
   }, [slug]);
 
@@ -106,7 +112,6 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
       console.log('✅ Post fetched:', data.slug, 'Related:', data.relatedPosts?.length);
       return data;
     },
-    initialData: cachedData,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -134,6 +139,8 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
     }
   }, [fullPost]);
 
+  const postData = fullPost || cachedData;
+
   return (
     <div 
       ref={modalContainerRef}
@@ -160,19 +167,19 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
                   ⚡ Instant Cache
                 </span>
                 {isFetching && (
-                  <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full animate-pulse">
+                  <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-pulse">
                     🔄 Loading Details...
                   </span>
                 )}
               </div>
               <h1 className="text-5xl font-bold mb-4 text-black leading-tight">
-                {fullPost?.title || 'Loading...'}
+                {postData?.title || 'Loading...'}
               </h1>
               <div className="flex items-center gap-4 text-sm text-black">
-                {fullPost?.author && <span className="font-medium">By {fullPost.author}</span>}
-                {fullPost?.publishedAt && (
+                {postData?.author && <span className="font-medium">By {postData.author}</span>}
+                {postData?.publishedAt && (
                   <span>
-                    {new Date(fullPost.publishedAt).toLocaleDateString('en-US', {
+                    {new Date(postData.publishedAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
@@ -183,13 +190,13 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
             </div>
 
             <img 
-              src={fullPost?.thumbnail} 
-              alt={fullPost?.title}
+              src={postData?.thumbnail} 
+              alt={postData?.title}
               className="w-full h-96 object-cover rounded-lg mb-8 shadow-md" 
             />
 
             <div className="text-black text-xl leading-relaxed mb-8">
-              {fullPost?.shortDesc}
+              {postData?.shortDesc}
             </div>
 
             {fullPost?.content && (
@@ -199,46 +206,42 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
               />
             )}
 
-            <div className="mt-12 border-t pt-8">
-              <h3 className="font-bold text-2xl mb-6 text-black">Related Posts</h3>
-              {isFetching && (!fullPost?.relatedPosts || fullPost.relatedPosts.length === 0) ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="border rounded-lg overflow-hidden animate-pulse">
-                      <div className="w-full h-32 bg-gray-200"></div>
-                      <div className="p-3">
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : !fullPost?.relatedPosts || fullPost.relatedPosts.length === 0 ? (
-                <p className="text-gray-500">No related posts available.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {fullPost.relatedPosts
-                    .filter(related => related.slug !== slug)
-                    .map((related) => (
-                    <button
-                      key={related.id}
-                      onClick={() => onNavigate(related.slug)}
-                      className="group block border rounded-lg overflow-hidden hover:shadow-lg transition-shadow text-left w-full cursor-pointer"
-                    >
-                      <img 
-                        src={related.thumbnail} 
-                        className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                        alt={related.title}
-                      />
-                      <div className="p-3">
-                        <h4 className="font-semibold text-sm line-clamp-2 group-hover:text-purple-700 transition-colors">
-                          {related.title}
-                        </h4>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+      <div className="mt-12 border-t pt-8">
+        <h3 className="font-bold text-2xl mb-6 text-black">Related Posts</h3>
+        {fullPost?.relatedPosts && fullPost.relatedPosts.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {fullPost.relatedPosts
+              .filter(related => related.slug !== fullPost.slug)
+              .map((related) => (
+              <button
+                key={related.id}
+                onClick={() => onNavigate(related.slug)}
+                className="group text-left w-full cursor-pointer"
+              >
+                <article className="border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">
+                  <div className="relative h-32 overflow-hidden">
+                    <img 
+                      src={related.thumbnail} 
+                      alt={related.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </div>
+                  <div className="p-3">
+                    <h4 className="font-semibold text-sm line-clamp-2 group-hover:text-purple-700 transition-colors">
+                      {related.title}
+                    </h4>
+                  </div>
+                </article>
+              </button>
+            ))}
+          </div>
+        ) : isFetching ? (
+          <p className="text-gray-500">Loading related posts...</p>
+        ) : (
+          <p className="text-gray-500">No related posts available.</p>
+        )}
+      </div>
       </PostContainer>
     </div>
   );

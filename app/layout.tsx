@@ -14,26 +14,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Instant Modal Demo - Next.js 15 + React Query",
-  description: "Lightning-fast modal opens using route interception and smart caching",
+  title: "Next.js Blog Demo - Server-Side Rendering",
+  description: "Fast blog with Next.js server-side rendering and page navigation",
   openGraph: {
-    title: "Instant Modal Demo - Next.js 15 + React Query",
-    description: "Lightning-fast modal opens using route interception and smart caching",
+    title: "Next.js Blog Demo - Server-Side Rendering",
+    description: "Fast blog with Next.js server-side rendering and page navigation",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Instant Modal Demo - Next.js 15 + React Query",
-    description: "Lightning-fast modal opens using route interception and smart caching",
+    title: "Next.js Blog Demo - Server-Side Rendering",
+    description: "Fast blog with Next.js server-side rendering and page navigation",
   },
 };
 
 export default function RootLayout({
   children,
-  modal,
 }: Readonly<{
   children: React.ReactNode;
-  modal: React.ReactNode;
 }>) {
   return (
     <html lang="en">
@@ -43,7 +41,6 @@ export default function RootLayout({
       >
         <Providers>
           {children}
-          {modal}
         </Providers>
       </body>
     </html>
