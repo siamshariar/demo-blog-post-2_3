@@ -11,6 +11,11 @@ export default function InterceptedPostModal() {
   // Telemetry — log when intercepting modal mounts
   useEffect(() => {
     console.log('[InterceptedPostModal] mounted for', slug, 'at', Date.now());
+    try {
+      window.dispatchEvent(new CustomEvent('modal-mounted', { detail: { slug } }));
+    } catch (err) {
+      /* noop */
+    }
   }, [slug]);
 
   // Close on Escape to match PostModal UX

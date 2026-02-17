@@ -13,14 +13,6 @@ export default function VirtualizedFeed() {
   const virtuosoRef = useRef<any>(null);
   // Handle post click: navigate to the intercepting route so Next mounts the `@modal` client page.
   const handlePostClick = (slug: string) => {
-    // Quick telemetry: measure click → modal mount latency
-    console.log('[Feed] post clicked:', slug, 'at', Date.now());
-
-    // Show an immediate optimistic overlay (visual only) so it *feels* instant
-    // — the intercepting route still performs the canonical navigation.
-    const evt = new CustomEvent('optimistic-modal-open', { detail: { slug } });
-    window.dispatchEvent(evt);
-
     // router.push mounts the intercepting route (`@modal/(.)post/[slug]`) into the `modal` slot
     router.push(`/post/${slug}`);
   };
@@ -98,7 +90,9 @@ export default function VirtualizedFeed() {
           <button
             key={post.id}
             onClick={() => handlePostClick(post.slug)}
-
+            onMouseEnter={() => router.prefetch(`/post/${post.slug}`)}
+            onFocus={() => router.prefetch(`/post/${post.slug}`)}
+            onTouchStart={() => router.prefetch(`/post/${post.slug}`)}
             className="group text-left w-full cursor-pointer"
           >
             <article className="relative border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">

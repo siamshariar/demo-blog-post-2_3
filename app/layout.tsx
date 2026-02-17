@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
-import OptimisticModal from '@/app/components/OptimisticModal';
+import { getTrendingPosts } from '@/lib/api';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,26 +29,24 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   modal,
 }: Readonly<{
   children: React.ReactNode;
   modal?: React.ReactNode;
 }>) {
+  // Server-side prefetch first page so client react-query has `posts` ready
+  const initialPosts = await getTrendingPosts({ pageParam: 1 });
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <Providers>
+        <Providers initialPosts={initialPosts}>
           {children}
-          {/* Optimistic overlay (shows instantly on click while intercepting modal mounts) */}
-          {/* NOTE: loaded as a client component to run listeners and read cache.
-              Keeps z-index lower than the real `PostModal` (z-50) so the real
-              modal replaces the optimistic overlay when ready. */}
-          <OptimisticModal />
           {modal}
         </Providers>
       </body>

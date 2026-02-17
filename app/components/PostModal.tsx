@@ -196,6 +196,12 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
   // Telemetry: log mount + cached status
   useEffect(() => {
     console.log('[PostModal] mounted for', effectiveSlug, 'cachedData?', Boolean(cachedData), 'at', Date.now());
+    // Let any optimistic overlay know the real modal is ready
+    try {
+      window.dispatchEvent(new CustomEvent('modal-mounted', { detail: { slug: effectiveSlug } }));
+    } catch (err) {
+      /* noop */
+    }
   }, [effectiveSlug, cachedData]);
 
   // 2. FETCH FULL DETAILS (Background)
