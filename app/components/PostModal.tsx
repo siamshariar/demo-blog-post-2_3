@@ -186,17 +186,18 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
     return undefined;
   }, [queryClient, effectiveSlug]);
 
-  // 2. FETCH FULL DETAILS (Background) — defer the network fetch when we already have a cached preview
-  const [shouldFetch, setShouldFetch] = useState<boolean>(() => !Boolean(cachedData));
+  // 2. FETCH FULL DETAILS (Background)
+  // Always defer the network fetch briefly so the modal can render instantly
+  // from cache or a synthesized preview — avoids visible loading on click.
+  const [shouldFetch, setShouldFetch] = useState<boolean>(false);
 
   useEffect(() => {
     if (!effectiveSlug) return;
-    if (!cachedData) {
-      setShouldFetch(true);
-      return;
-    }
 
-    const t = setTimeout(() => setShouldFetch(true), 400);
+    // Short delay before starting the background fetch. If we already have
+    // `cachedData` keep the delay a bit longer so instant UI is obvious.
+    const delay = cachedData ? 400 : 250;
+    const t = setTimeout(() => setShouldFetch(true), delay);
     return () => clearTimeout(t);
   }, [effectiveSlug, cachedData]);
 
