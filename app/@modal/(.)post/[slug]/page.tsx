@@ -1,12 +1,18 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PostModal from '@/app/components/PostModal';
 
-export default function InterceptingPostModal({ params }: { params: { slug: string } }) {
+export default function InterceptingPostModal({ params }: { params: Promise<{ slug: string }> | { slug?: string } }) {
   const router = useRouter();
-  const { slug } = params;
+
+  // `params` may be a Promise in client components — use React.use to unwrap when available
+  const resolvedParams: { slug?: string } = (React as any).use
+    ? (React as any).use(params)
+    : (params as any);
+
+  const slug = resolvedParams?.slug ?? (typeof window !== 'undefined' ? window.location.pathname.replace('/post/', '') : undefined);
 
   // ESC to close when modal is mounted via parallel route
   useEffect(() => {
@@ -20,5 +26,5 @@ export default function InterceptingPostModal({ params }: { params: { slug: stri
   const handleClose = () => router.back();
   const handleNavigate = (s: string) => router.push(`/post/${s}`);
 
-  return <PostModal slug={slug} onClose={handleClose} onNavigate={handleNavigate} />;
+  return <PostModal slug={String(slug)} onClose={handleClose} onNavigate={handleNavigate} />;
 }
