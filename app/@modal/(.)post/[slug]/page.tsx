@@ -1,20 +1,15 @@
+// app/@modal/(.)post/[slug]/page.tsx
 'use client';
-
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect } from 'react';
 import PostModal from '@/app/components/PostModal';
 
-export default function InterceptingPostModal({ params }: { params: Promise<{ slug: string }> | { slug?: string } }) {
+export default function InterceptedPostModal() {
   const router = useRouter();
+  const { slug } = useParams() as { slug?: string };
 
-  // `params` may be a Promise in client components — use React.use to unwrap when available
-  const resolvedParams: { slug?: string } = (React as any).use
-    ? (React as any).use(params)
-    : (params as any);
 
-  const slug = resolvedParams?.slug ?? (typeof window !== 'undefined' ? window.location.pathname.replace('/post/', '') : undefined);
-
-  // ESC to close when modal is mounted via parallel route
+  // Close on Escape to match PostModal UX
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') router.back();
@@ -23,8 +18,14 @@ export default function InterceptingPostModal({ params }: { params: Promise<{ sl
     return () => window.removeEventListener('keydown', onKey);
   }, [router]);
 
-  const handleClose = () => router.back();
-  const handleNavigate = (s: string) => router.push(`/post/${s}`);
+  if (!slug) return null;
 
-  return <PostModal slug={String(slug)} onClose={handleClose} onNavigate={handleNavigate} />;
+  // Reuse PostModal (implements: instant-from-cache + deferred background fetch)
+  return (
+    <PostModal
+      slug={slug}
+      onClose={() => router.back()}
+      onNavigate={(s: string) => router.push(`/post/${s}`)}
+    />
+  );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Virtuoso } from 'react-virtuoso';
 import { PostsPage } from '@/lib/types';
@@ -95,8 +95,8 @@ export default function VirtualizedFeed() {
           >
             <article className="relative border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">
               <div className="relative h-48 overflow-hidden">
-                <span className={`absolute top-3 left-3 z-20 inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full transition-opacity duration-200 ${pathname === `/post/${post.slug}` ? 'opacity-100' : 'opacity-0'}`>
-                  🎭 Modal View
+                <span className={`absolute top-3 left-3 z-20 inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full transition-opacity duration-200 ${pathname === '/post/' + post.slug ? 'opacity-100' : 'opacity-0'}`}>
+                  Modal View
                 </span>
                 <img 
                   src={post.thumbnail} 
