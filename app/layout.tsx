@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
+import OptimisticModal from '@/app/components/OptimisticModal';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,6 +44,11 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          {/* Optimistic overlay (shows instantly on click while intercepting modal mounts) */}
+          {/* NOTE: loaded as a client component to run listeners and read cache.
+              Keeps z-index lower than the real `PostModal` (z-50) so the real
+              modal replaces the optimistic overlay when ready. */}
+          <OptimisticModal />
           {modal}
         </Providers>
       </body>
