@@ -94,6 +94,30 @@ export default function VirtualizedFeed() {
           <button
             key={post.id}
             onClick={() => handlePostClick(post.slug)}
+            onPointerDown={() => {
+              if (!post?.slug) return;
+              queryClient.prefetchQuery({
+                queryKey: ['post', post.slug],
+                queryFn: async () => {
+                  const res = await fetch(`/api/post/${post.slug}`);
+                  if (!res.ok) throw new Error('Failed to prefetch post');
+                  return res.json();
+                },
+                staleTime: 5 * 60 * 1000,
+              });
+            }}
+            onMouseEnter={() => {
+              if (!post?.slug) return;
+              queryClient.prefetchQuery({
+                queryKey: ['post', post.slug],
+                queryFn: async () => {
+                  const res = await fetch(`/api/post/${post.slug}`);
+                  if (!res.ok) throw new Error('Failed to prefetch post');
+                  return res.json();
+                },
+                staleTime: 5 * 60 * 1000,
+              });
+            }}
             className="group text-left w-full cursor-pointer"
           >
             <article className="relative border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">

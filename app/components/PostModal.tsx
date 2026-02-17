@@ -52,6 +52,20 @@ const generateMockPost = (id: number): Post => {
   };
 };
 
+// Helper: generate related post previews (used for instant fallback)
+const generateRelatedMocks = (id: number, limit = 3): Post[] => {
+  const relatedIds = [...new Set([
+    Math.max(1, id - 2),
+    Math.max(1, id - 1),
+    Math.min(100000, id + 1),
+    Math.min(100000, id + 2),
+  ])]
+    .filter((rid) => rid !== id)
+    .slice(0, limit);
+
+  return relatedIds.map((rid) => generateMockPost(rid));
+};
+
 export default function PostModal({ slug, onClose, onNavigate }: PostModalProps) {
   const queryClient = useQueryClient();
   const modalContainerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +76,19 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
     ogDescription: string;
     ogImage: string;
   } | null>(null);
+
+  // If `slug` prop is missing for any reason, derive it from the pathname so
+  // the modal can still render instantly (prevents `undefined` fetches).
+  const effectiveSlug = typeof slug === 'string' && slug ? slug :
+    (typeof window !== 'undefined' && window.location.pathname.startsWith('/post/')
+      ? window.location.pathname.replace('/post/', '')
+      : undefined);
+
+  if (!effectiveSlug) {
+    // Defensive: render a fallback UI instead of attempting network calls
+    // (this keeps the modal fast and avoids /api/post/undefined requests).
+  }
+
 
   // Lock body scroll when modal is open - preserve scroll position
   useEffect(() => {
@@ -134,32 +161,50 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
 
   // 1. GET DATA FROM CACHE (Instant) - with generated content
   const cachedData = useMemo(() => {
-    const postsData = queryClient.getQueryData(['posts']) as { 
-      pages: PostsPage[] 
-    } | undefined;
-    
-    const cachedPost = postsData?.pages
-      ?.flatMap((p) => p.items)
-      ?.find((item) => item.slug === slug);
-    
-    // Generate content instantly for cached post
+    const s = effectiveSlug as string | undefined;
+    if (!s) return undefined;
+
+    const postsData = queryClient.getQueryData(['posts']) as { pages: PostsPage[] } | undefined;
+
+    // 1) Try list cache
+    const cachedPost = postsData?.pages?.flatMap((p) => p.items)?.find((item) => item.slug === s);
     if (cachedPost) {
       const id = parseInt(cachedPost.slug.replace('post-', ''));
       return {
         ...cachedPost,
-        content: generateMockPost(id).content
-      };
+        content: cachedPost.content || generateMockPost(id).content,
+        relatedPosts: cachedPost.relatedPosts || generateRelatedMocks(id),
+      } as Post;
     }
-    
-    return cachedPost;
-  }, [queryClient, slug]);
 
-  // 2. FETCH FULL DETAILS (Background)
+    // 2) Try single-post cache
+    const singleCached = queryClient.getQueryData(['post', s]) as Post | undefined;
+    if (singleCached) return singleCached;
+
+    // 3) Fallback: synthesize a preview from the slug so the modal shows instantly
+    const id = parseInt(String(s).replace('post-', ''));
+    if (!Number.isNaN(id) && id > 0) {
+      return {
+        ...generateMockPost(id),
+        relatedPosts: generateRelatedMocks(id),
+      } as Post;
+    }
+
+    return undefined;
+  }, [queryClient, effectiveSlug]);
+
+  // 2. FETCH FULL DETAILS (Background) — use cached list item as `initialData` so the modal shows instantly
   const { data: fullPost, isFetching } = useQuery<Post>({
-    queryKey: ['post', slug],
+    queryKey: ['post', effectiveSlug],
+    // Avoid running the query when slug is missing (prevents /api/post/undefined)
+    enabled: Boolean(effectiveSlug),
+    // Use the cached preview (if present) as initialData so UI is instant and avoids a loading state
+    initialData: cachedData || undefined,
+    initialDataUpdatedAt: cachedData ? Date.now() : undefined,
     queryFn: async () => {
-      console.log('🔄 Fetching post:', slug);
-      const res = await fetch(`/api/post/${slug}`);
+      const s = effectiveSlug as string;
+      console.log('🔄 Fetching post:', s);
+      const res = await fetch(`/api/post/${s}`);
       if (!res.ok) throw new Error('Failed to fetch post');
       const data = await res.json();
       console.log('✅ Post fetched:', data.slug, 'Related:', data.relatedPosts?.length);
@@ -219,7 +264,8 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
                 <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
                   ⚡ Instant Cache
                 </span>
-                {isFetching && (
+                {/* Show background-loading badge only when we don't have a cached preview */}
+                {!cachedData && isFetching && (
                   <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-pulse">
                     🔄 Loading Details...
                   </span>
@@ -261,10 +307,10 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
 
       <div className="mt-12 border-t pt-8">
         <h3 className="font-bold text-2xl mb-6 text-black">Related Posts</h3>
-        {fullPost?.relatedPosts && fullPost.relatedPosts.length > 0 ? (
+        {postData?.relatedPosts && postData.relatedPosts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {fullPost.relatedPosts
-              .filter(related => related.slug !== fullPost.slug)
+            {postData.relatedPosts
+              .filter(related => related.slug !== postData.slug)
               .map((related) => (
               <button
                 key={related.id}
@@ -289,7 +335,7 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
               </button>
             ))}
           </div>
-        ) : isFetching ? (
+        ) : (!postData?.relatedPosts && isFetching) ? (
           <p className="text-gray-500">Loading related posts...</p>
         ) : (
           <p className="text-gray-500">No related posts available.</p>
