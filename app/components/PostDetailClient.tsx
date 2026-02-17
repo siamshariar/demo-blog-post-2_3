@@ -1,15 +1,15 @@
 'use client';
 
 import { Post } from '@/lib/types';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import PostModal from './PostModal';
 
 interface PostDetailClientProps {
   post: Post;
 }
 
 export default function PostDetailClient({ post }: PostDetailClientProps) {
-  const router = useRouter();
+  const [modalSlug, setModalSlug] = useState<string | null>(null);
 
   // Scroll to top whenever a different post is rendered (full detail page navigation)
   useEffect(() => {
@@ -22,14 +22,27 @@ export default function PostDetailClient({ post }: PostDetailClientProps) {
     }
   }, [post.slug]);
 
-  // Open related post via Next navigation so the intercepting route mounts the modal
-  const openRelated = (slug: string) => {
-    // navigate to the same /post/[slug] path — Next will mount the (.) intercepting modal
-    router.push(`/post/${slug}`);
+  // Handle modal close
+  const handleModalClose = () => {
+    setModalSlug(null);
+  };
+
+  // Handle modal navigate (when clicking related posts)
+  const handleModalNavigate = (slug: string) => {
+    setModalSlug(slug);
+    // No URL update to avoid RSC fetches
   };
 
   return (
     <>
+      {modalSlug && (
+        <PostModal
+          slug={modalSlug}
+          onClose={handleModalClose}
+          onNavigate={handleModalNavigate}
+        />
+      )}
+
       <div className="mb-6">
         <div className="flex gap-2 mb-4">
           <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
@@ -84,7 +97,7 @@ export default function PostDetailClient({ post }: PostDetailClientProps) {
               .map((related) => (
               <button
                 key={related.id}
-                onClick={() => openRelated(related.slug)}
+                onClick={() => setModalSlug(related.slug)}
                 className="group text-left w-full cursor-pointer"
               >
                 <article className="border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">

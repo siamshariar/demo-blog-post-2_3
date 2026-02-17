@@ -1,5 +1,5 @@
 // app/page.tsx - Server Component with Prefetching
-import { QueryClient, dehydrate } from '@tanstack/react-query';
+import { QueryClient, HydrationBoundary, dehydrate } from '@tanstack/react-query';
 import { getTrendingPosts } from '@/lib/api';
 import VirtualizedFeed from '@/app/components/VirtualizedFeed';
 
@@ -14,6 +14,11 @@ export default async function HomePage() {
     initialPageParam: 1,
   });
 
-  // 2. Render feed — hydration is performed at the root layout now
-  return <VirtualizedFeed />;
+  // 2. Hydrate the Client Component with this data
+  // The Feed component will have data immediately without any loading state
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <VirtualizedFeed />
+    </HydrationBoundary>
+  );
 }
