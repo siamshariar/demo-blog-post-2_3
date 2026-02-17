@@ -2,74 +2,24 @@
 
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { Virtuoso } from 'react-virtuoso';
 import { PostsPage } from '@/lib/types';
-import PostModal from './PostModal';
 
 export default function VirtualizedFeed() {
   const queryClient = useQueryClient();
-  const [modalSlug, setModalSlug] = useState<string | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
   const virtuosoRef = useRef<any>(null);
-  
-  // Check URL on mount for direct navigation or reload
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname;
-      if (path === '/') {
-        setModalSlug(null);
-      } else if (path.startsWith('/post/')) {
-        const slug = path.replace('/post/', '');
-        setModalSlug(slug);
-      }
-    };
 
-    if (typeof window !== 'undefined') {
-      // Handle initial load
-      handlePopState();
-      // Listen for browser back/forward
-      window.addEventListener('popstate', handlePopState);
-    }
-
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('popstate', handlePopState);
-      }
-    };
-  }, []);
   
-  // Handle instant modal open (state-based, no navigation)
+  // Handle post click: navigate to the same URL so Next mounts the intercepting modal route
   const handlePostClick = (slug: string) => {
-    setModalSlug(slug);
-    // Update URL without navigation (for reload support)
-    window.history.pushState(null, '', `/post/${slug}`);
+    router.push(`/post/${slug}`);
   };
+
   
-  // Handle modal close
-  const handleModalClose = () => {
-    // Use browser back to navigate properly through post history
-    window.history.back();
-  };
-  
-  // Handle modal navigate (when clicking related posts)
-  const handleModalNavigate = (slug: string) => {
-    // Don't reset scroll position when navigating between modals
-    setModalSlug(slug);
-    // Update URL for browser back support
-    window.history.pushState(null, '', `/post/${slug}`);
-  };
-  
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (modalSlug) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [modalSlug]);
+
   
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<PostsPage>({
     queryKey: ['posts'],
@@ -114,18 +64,18 @@ export default function VirtualizedFeed() {
 
   // Load more when reaching the end
   const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage && !modalSlug) {
+    if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage, modalSlug]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Advance fetch when 60% of loaded rows are visible
   const rangeChanged = useCallback(({ endIndex }: { endIndex: number }) => {
     const totalRows = rows.length;
-    if (endIndex >= totalRows * 0.6 && hasNextPage && !isFetchingNextPage && !modalSlug) {
+    if (endIndex >= totalRows * 0.6 && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
-  }, [rows.length, hasNextPage, isFetchingNextPage, fetchNextPage, modalSlug]);
+  }, [rows.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Render a row of posts (grid row)
   const renderRow = useCallback((index: number) => {
@@ -148,7 +98,7 @@ export default function VirtualizedFeed() {
           >
             <article className="relative border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">
               <div className="relative h-48 overflow-hidden">
-                <span className={`absolute top-3 left-3 z-20 inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full transition-opacity duration-200 ${modalSlug === post.slug ? 'opacity-100' : 'opacity-0'}`}>
+                <span className={`absolute top-3 left-3 z-20 inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full transition-opacity duration-200 ${pathname === `/post/${post.slug}` ? 'opacity-100' : 'opacity-0'}`}>
                   🎭 Modal View
                 </span>
                 <img 
@@ -175,7 +125,7 @@ export default function VirtualizedFeed() {
         ))}
       </div>
     );
-  }, [columns, rows, modalSlug, handlePostClick]);
+  }, [columns, rows, pathname, handlePostClick]);
 
   // Footer component for loading indicator
   const Footer = useCallback(() => {
@@ -195,16 +145,7 @@ export default function VirtualizedFeed() {
     );
   }, [isFetchingNextPage, hasNextPage, data, allPosts.length]);
 
-  // ESC key to close modal if open
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && modalSlug) {
-        handleModalClose();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [modalSlug]);
+
 
   if (isLoading) {
     return (
@@ -225,14 +166,6 @@ export default function VirtualizedFeed() {
 
   return (
     <>
-      {modalSlug && (
-        <PostModal 
-          slug={modalSlug}
-          onClose={handleModalClose}
-          onNavigate={handleModalNavigate}
-        />
-      )}
-      
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <header className="mb-8">
