@@ -8,6 +8,10 @@ export default function InterceptedPostModal() {
   const router = useRouter();
   const { slug } = useParams() as { slug?: string };
 
+  // Telemetry — log when intercepting modal mounts
+  useEffect(() => {
+    console.log('[InterceptedPostModal] mounted for', slug, 'at', Date.now());
+  }, [slug]);
 
   // Close on Escape to match PostModal UX
   useEffect(() => {

@@ -163,28 +163,40 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
     const cachedPost = postsData?.pages?.flatMap((p) => p.items)?.find((item) => item.slug === s);
     if (cachedPost) {
       const id = parseInt(cachedPost.slug.replace('post-', ''));
-      return {
+      const result = {
         ...cachedPost,
         content: cachedPost.content || generateMockPost(id).content,
         relatedPosts: cachedPost.relatedPosts || generateRelatedMocks(id),
       } as Post;
+      console.log('[PostModal] using LIST cache for', s);
+      return result;
     }
 
     // 2) Try single-post cache
     const singleCached = queryClient.getQueryData(['post', s]) as Post | undefined;
-    if (singleCached) return singleCached;
+    if (singleCached) {
+      console.log('[PostModal] using SINGLE-POST cache for', s);
+      return singleCached;
+    }
 
     // 3) Fallback: synthesize a preview from the slug so the modal shows instantly
     const id = parseInt(String(s).replace('post-', ''));
     if (!Number.isNaN(id) && id > 0) {
+      console.log('[PostModal] synthesizing preview for', s);
       return {
         ...generateMockPost(id),
         relatedPosts: generateRelatedMocks(id),
       } as Post;
     }
 
+    console.log('[PostModal] no preview available for', s);
     return undefined;
   }, [queryClient, effectiveSlug]);
+
+  // Telemetry: log mount + cached status
+  useEffect(() => {
+    console.log('[PostModal] mounted for', effectiveSlug, 'cachedData?', Boolean(cachedData), 'at', Date.now());
+  }, [effectiveSlug, cachedData]);
 
   // 2. FETCH FULL DETAILS (Background)
   // Always defer the network fetch briefly so the modal can render instantly
