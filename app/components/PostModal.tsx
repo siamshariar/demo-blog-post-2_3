@@ -163,46 +163,37 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
     const cachedPost = postsData?.pages?.flatMap((p) => p.items)?.find((item) => item.slug === s);
     if (cachedPost) {
       const id = parseInt(cachedPost.slug.replace('post-', ''));
-      const result = {
+      return {
         ...cachedPost,
         content: cachedPost.content || generateMockPost(id).content,
         relatedPosts: cachedPost.relatedPosts || generateRelatedMocks(id),
       } as Post;
-      console.log('[PostModal] using LIST cache for', s);
-      return result;
     }
 
-    // 2) Try single-post cache
+    // 2) Try single-post cache — ensure it contains `relatedPosts` and `content` fallback
     const singleCached = queryClient.getQueryData(['post', s]) as Post | undefined;
     if (singleCached) {
-      console.log('[PostModal] using SINGLE-POST cache for', s);
-      return singleCached;
+      const idFromCached = parseInt(String(singleCached.slug).replace('post-', ''));
+      return {
+        ...singleCached,
+        content: singleCached.content || generateMockPost(idFromCached).content,
+        relatedPosts: singleCached.relatedPosts && singleCached.relatedPosts.length > 0
+          ? singleCached.relatedPosts
+          : generateRelatedMocks(idFromCached),
+      } as Post;
     }
 
     // 3) Fallback: synthesize a preview from the slug so the modal shows instantly
     const id = parseInt(String(s).replace('post-', ''));
     if (!Number.isNaN(id) && id > 0) {
-      console.log('[PostModal] synthesizing preview for', s);
       return {
         ...generateMockPost(id),
         relatedPosts: generateRelatedMocks(id),
       } as Post;
     }
 
-    console.log('[PostModal] no preview available for', s);
     return undefined;
   }, [queryClient, effectiveSlug]);
-
-  // Telemetry: log mount + cached status
-  useEffect(() => {
-    console.log('[PostModal] mounted for', effectiveSlug, 'cachedData?', Boolean(cachedData), 'at', Date.now());
-    // Let any optimistic overlay know the real modal is ready
-    try {
-      window.dispatchEvent(new CustomEvent('modal-mounted', { detail: { slug: effectiveSlug } }));
-    } catch (err) {
-      /* noop */
-    }
-  }, [effectiveSlug, cachedData]);
 
   // 2. FETCH FULL DETAILS (Background)
   // Always defer the network fetch briefly so the modal can render instantly
@@ -261,6 +252,24 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
   }, [fullPost]);
 
   const postData = fullPost || cachedData;
+
+  // Ensure we always have related-post *previews* for the modal UI. If the
+  // source `postData.relatedPosts` is empty or missing, synthesize fallback
+  // previews so the modal UI matches the full details page experience.
+  const relatedPostsToShow = (() => {
+    const slugStr = (postData?.slug || effectiveSlug || '') as string;
+    const id = parseInt(String(slugStr).replace('post-', '')) || NaN;
+
+    if (postData?.relatedPosts && postData.relatedPosts.length > 0) {
+      return postData.relatedPosts;
+    }
+
+    if (!Number.isNaN(id) && id > 0) {
+      return generateRelatedMocks(id);
+    }
+
+    return undefined;
+  })();
 
   return (
     <div 
@@ -330,10 +339,10 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
 
       <div className="mt-12 border-t pt-8">
         <h3 className="font-bold text-2xl mb-6 text-black">Related Posts</h3>
-        {postData?.relatedPosts && postData.relatedPosts.length > 0 ? (
+        {relatedPostsToShow && relatedPostsToShow.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {postData.relatedPosts
-              .filter(related => related.slug !== postData.slug)
+            {relatedPostsToShow
+              .filter(related => related.slug !== postData?.slug)
               .map((related) => (
               <button
                 key={related.id}
@@ -358,7 +367,7 @@ export default function PostModal({ slug, onClose, onNavigate }: PostModalProps)
               </button>
             ))}
           </div>
-        ) : (!postData?.relatedPosts && isFetching) ? (
+        ) : isFetching ? (
           <p className="text-gray-500">Loading related posts...</p>
         ) : (
           <p className="text-gray-500">No related posts available.</p>

@@ -1,7 +1,8 @@
 'use client';
 
-import { Post } from '@/lib/types';
+import { Post, PostsPage } from '@/lib/types';
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
 interface PostDetailClientProps {
@@ -10,6 +11,20 @@ interface PostDetailClientProps {
 
 export default function PostDetailClient({ post }: PostDetailClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // Ensure the client React Query cache has this post (seeded from server).
+  // This makes the intercepting `@modal` open instantly when mounted.
+  useEffect(() => {
+    queryClient.setQueryData(['post', post.slug], post);
+
+    // also seed related posts so related-click opens instantly
+    try {
+      post.relatedPosts?.forEach((r) => queryClient.setQueryData(['post', r.slug], r));
+    } catch (err) {
+      /* noop */
+    }
+  }, [post, queryClient]);
 
   // Scroll to top whenever a different post is rendered (full detail page navigation)
   useEffect(() => {
@@ -21,6 +36,23 @@ export default function PostDetailClient({ post }: PostDetailClientProps) {
       }
     }
   }, [post.slug]);
+
+  // Prefetch helper for related-post UI interactions (used on hover / pointer-down)
+  const prefetchRelated = (slug: string) => {
+    const single = queryClient.getQueryData(['post', slug]);
+    if (single) return;
+    const postsData = queryClient.getQueryData(['posts']) as { pages: PostsPage[] } | undefined;
+    const found = postsData?.pages?.flatMap(p => p.items)?.find(i => i.slug === slug);
+    if (found) {
+      queryClient.setQueryData(['post', slug], found);
+      return;
+    }
+    queryClient.prefetchQuery(['post', slug], async () => {
+      const res = await fetch(`/api/post/${slug}`);
+      if (!res.ok) throw new Error('Failed to fetch post');
+      return res.json();
+    }, { staleTime: 5 * 60 * 1000 });
+  };
 
   // Open related post via Next navigation so the intercepting route mounts the modal
   const openRelated = (slug: string) => {
@@ -85,6 +117,10 @@ export default function PostDetailClient({ post }: PostDetailClientProps) {
               <button
                 key={related.id}
                 onClick={() => openRelated(related.slug)}
+                onPointerEnter={() => prefetchRelated(related.slug)}
+                onMouseEnter={() => prefetchRelated(related.slug)}
+                onFocus={() => prefetchRelated(related.slug)}
+                onPointerDown={() => prefetchRelated(related.slug)}
                 className="group text-left w-full cursor-pointer"
               >
                 <article className="border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">

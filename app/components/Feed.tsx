@@ -13,6 +13,27 @@ export default function Feed() {
     rootMargin: '2000px',
   });
   const queryClient = useQueryClient();
+
+  // Prefetch helper: seed single-post cache from list or prefetch network so
+  // the modal can open instantly even when navigating from a server-rendered page.
+  const prefetchPost = async (slug: string) => {
+    const single = queryClient.getQueryData(['post', slug]);
+    if (single) return;
+
+    const postsData = queryClient.getQueryData(['posts']) as { pages: PostsPage[] } | undefined;
+    const found = postsData?.pages?.flatMap((p) => p.items)?.find((item) => item.slug === slug);
+    if (found) {
+      queryClient.setQueryData(['post', slug], found);
+      return;
+    }
+
+    // background prefetch
+    queryClient.prefetchQuery(['post', slug], async () => {
+      const res = await fetch(`/api/post/${slug}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }, { staleTime: 5 * 60 * 1000 });
+  };
   
   // This uses the server-prefetched data immediately (Instant Load)
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<PostsPage>({
@@ -75,6 +96,10 @@ export default function Feed() {
             <Link
               key={post.id}
               href={`/post/${post.slug}`}
+              onMouseEnter={() => prefetchPost(post.slug)}
+              onFocus={() => prefetchPost(post.slug)}
+              onTouchStart={() => prefetchPost(post.slug)}
+              onPointerDown={() => prefetchPost(post.slug)}
               className="group text-left w-full cursor-pointer"
             >
               <article className="border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1">
