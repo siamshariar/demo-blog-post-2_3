@@ -32,3 +32,17 @@ export default function Providers({ children, initialPosts }: { children: ReactN
     </QueryClientProvider>
   );
 }
+
+// Small client-side utility used by modal intercepting routes to trigger
+// UI updates (no-op if not needed). Kept intentionally tiny to avoid
+// introducing additional context/providers during the demo.
+export function useInstantModal() {
+  return {
+    show: () => {
+      try { window.dispatchEvent(new CustomEvent('instant-modal-show')); } catch {}
+    },
+    hide: () => {
+      try { window.dispatchEvent(new CustomEvent('instant-modal-hide')); } catch {}
+    },
+  };
+}

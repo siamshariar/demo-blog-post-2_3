@@ -4,7 +4,6 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { PostsPage } from '@/lib/types';
 
 export default function Feed() {
@@ -14,7 +13,6 @@ export default function Feed() {
     rootMargin: '2000px',
   });
   const queryClient = useQueryClient();
-  const router = useRouter();
   
   // This uses the server-prefetched data immediately (Instant Load)
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteQuery<PostsPage>({
@@ -78,9 +76,6 @@ export default function Feed() {
               key={post.id}
               href={`/post/${post.slug}`}
               className="group text-left w-full cursor-pointer"
-              onMouseEnter={() => router.prefetch(`/post/${post.slug}`)}
-              onFocus={() => router.prefetch(`/post/${post.slug}`)}
-              onTouchStart={() => router.prefetch(`/post/${post.slug}`)}
             >
               <article className="border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1">
                 <div className="relative h-48 overflow-hidden">

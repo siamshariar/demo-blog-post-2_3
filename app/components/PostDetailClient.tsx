@@ -85,9 +85,6 @@ export default function PostDetailClient({ post }: PostDetailClientProps) {
               <button
                 key={related.id}
                 onClick={() => openRelated(related.slug)}
-                onMouseEnter={() => router.prefetch(`/post/${related.slug}`)}
-                onFocus={() => router.prefetch(`/post/${related.slug}`)}
-                onTouchStart={() => router.prefetch(`/post/${related.slug}`)}
                 className="group text-left w-full cursor-pointer"
               >
                 <article className="border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">

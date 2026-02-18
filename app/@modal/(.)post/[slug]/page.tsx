@@ -1,27 +1,23 @@
 // app/@modal/(.)post/[slug]/page.tsx
 'use client';
 import { useRouter, useParams } from 'next/navigation';
+import { useInstantModal } from '@/app/providers';
 import { useEffect } from 'react';
 import PostModal from '@/app/components/PostModal';
 
 export default function InterceptedPostModal() {
   const router = useRouter();
   const { slug } = useParams() as { slug?: string };
+  const instantModal = useInstantModal();
 
-  // Telemetry — log when intercepting modal mounts
-  useEffect(() => {
-    console.log('[InterceptedPostModal] mounted for', slug, 'at', Date.now());
-    try {
-      window.dispatchEvent(new CustomEvent('modal-mounted', { detail: { slug } }));
-    } catch (err) {
-      /* noop */
-    }
-  }, [slug]);
 
   // Close on Escape to match PostModal UX
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') router.back();
+      if (e.key === 'Escape') {
+        try { instantModal.hide(); } catch {}
+        router.back();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -33,8 +29,8 @@ export default function InterceptedPostModal() {
   return (
     <PostModal
       slug={slug}
-      onClose={() => router.back()}
-      onNavigate={(s: string) => router.push(`/post/${s}`)}
+      onClose={() => { try { instantModal.hide(); } catch {} ; router.back(); }}
+      onNavigate={(s: string) => { try { instantModal.hide(); } catch {} ; router.push(`/post/${s}`); }}
     />
   );
 }

@@ -11,8 +11,36 @@ export default function VirtualizedFeed() {
   const router = useRouter();
   const pathname = usePathname();
   const virtuosoRef = useRef<any>(null);
+
+  // Prefetch helper: seed single-post cache from list or prefetch from network.
+  // This guarantees `PostModal` can render instantly from cache when the `@modal`
+  // client page mounts (non-blocking — prefetch runs in background).
+  const prefetchPost = async (slug: string) => {
+    // already cached?
+    const single = queryClient.getQueryData(['post', slug]);
+    if (single) return;
+
+    // try to seed from the list cache so modal shows instantly without network
+    const postsData = queryClient.getQueryData(['posts']) as { pages: PostsPage[] } | undefined;
+    const found = postsData?.pages?.flatMap((p) => p.items)?.find((item) => item.slug === slug);
+    if (found) {
+      queryClient.setQueryData(['post', slug], found);
+      return;
+    }
+
+    // background prefetch (non-blocking)
+    queryClient.prefetchQuery(['post', slug], async () => {
+      const res = await fetch(`/api/post/${slug}`);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }, { staleTime: 5 * 60 * 1000 });
+  };
+
   // Handle post click: navigate to the intercepting route so Next mounts the `@modal` client page.
   const handlePostClick = (slug: string) => {
+    // warm cache (do not await) so `PostModal` can render instantly
+    prefetchPost(slug);
+
     // router.push mounts the intercepting route (`@modal/(.)post/[slug]`) into the `modal` slot
     router.push(`/post/${slug}`);
   };
@@ -90,9 +118,11 @@ export default function VirtualizedFeed() {
           <button
             key={post.id}
             onClick={() => handlePostClick(post.slug)}
-            onMouseEnter={() => router.prefetch(`/post/${post.slug}`)}
-            onFocus={() => router.prefetch(`/post/${post.slug}`)}
-            onTouchStart={() => router.prefetch(`/post/${post.slug}`)}
+            onPointerEnter={() => prefetchPost(post.slug)}
+            onMouseEnter={() => prefetchPost(post.slug)}
+            onFocus={() => prefetchPost(post.slug)}
+            onPointerDown={() => prefetchPost(post.slug)}
+
             className="group text-left w-full cursor-pointer"
           >
             <article className="relative border rounded-lg shadow-md hover:shadow-2xl transition-all duration-300 bg-white overflow-hidden transform group-hover:-translate-y-1 mb-6">
